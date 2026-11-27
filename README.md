@@ -132,8 +132,8 @@ Do not press Save, or open another page, while the app is typing. It will stop.
 - Import is for laboratory duties and is off in the other sections; their duties are added with
   **+ Duty**.
 - It cannot edit or delete entries already on the site.
-- Nobody has tried a whole entry that runs past midnight on the real site. Check the first one,
-  or use Intervals for night duties.
+- The site accepts a whole entry that runs past midnight when typed by hand, but the app has not
+  sent one to the real site yet. Check the first one.
 - Built for Windows 7, 8, 8.1, 10 and 11. **Not tested on Windows 7 or 8.** Windows XP and Vista
   are not supported.
 - The site uses plain `http`, so your PIN travels unencrypted. The app cannot change that.
