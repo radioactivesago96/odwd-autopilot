@@ -63,6 +63,7 @@ async function main() {
   await until('question', () => ui('return !document.querySelector("#chooser").hidden && !document.querySelector("#chooser button").disabled'), 3000);
   assert.match(await text('#chooser'), /What section are you\?/);
   assert.equal(await text('#chooser button.chosen'), 'Laboratory');
+  assert.deepEqual(await ui('return [...document.querySelectorAll("#chooser button")].map((b) => b.textContent)'), ['Laboratory', 'Nurse', 'Nurse Attendant']);
   assert.equal(win.getBrowserViews().length, 0);
   await shot('0d-section.png');
   await click('#chooser button[data-section="lab"]');
@@ -256,13 +257,42 @@ async function main() {
   await until('intervals', () => ui('return ' + nurseDuty + '.querySelectorAll(".entry").length === 11'));
   await ui(nurseDuty + '.scrollIntoView()');
   await shot('6d-nurse-intervals.png');
+  console.log('a nurse attendant duty');
+  await chooseSection('attendant', 'NA');
+  assert.equal(await ui('return document.querySelector("#import").disabled'), true);
+  await click('#add');
+  assert.deepEqual(await ui('return [document.querySelector("#sheet h2").textContent, document.querySelector("#f-layout").value, document.querySelector("#f-lab").hidden, document.querySelector("#f-nurse").hidden, document.querySelector("#f-attendant").hidden]'),
+    ['NEW DUTY · Nurse Attendant', 'whole', true, true, false]);
+  const aide = { censusIn: 29, aVs1: 29, aBottles: 2, aSpecimens: 3, aLabRequests: 3, aDiet: 29, aIvfAssist: 1, aIvFollowed: 1, aVs2: 29, aIvTerminated: 2, aNewAdmit: 4, aDietNew: 4, aRequests: 3, aVs3: 33, aHeplock: 1, aNewborn: 2, aVsEncoded: 33 };
+  await ui('document.querySelector("#f-date").value = "2026-11-12"; document.querySelector("#f-shift").value = "7p-7a"; ["8pm", "12am", "4am"].forEach((t, i) => { document.querySelector("#f-vt" + i).value = t; }); for (const [k, v] of Object.entries(' + JSON.stringify(aide) + ')) document.querySelector("#f-" + k).value = v;');
+  await shot('6g-attendant-form.png');
+  await click('#form-save');
+  await until('13 duties', async () => (await count('.duty')) === 13);
+  const aideDuty = '[...document.querySelectorAll(".duty")].find((li) => li.querySelector(".title small").textContent.startsWith("Nurse Attendant"))';
+  await ui(aideDuty + '.querySelector(".title").click()');
+  await until('attendant entry', () => ui('return ' + aideDuty + '.querySelectorAll(".entry").length === 1'));
+  await ui('const li = ' + aideDuty + '; const start = li.querySelector("input.start"); start.value = "18:50"; start.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));');
+  const aideText = () => ui('return ' + aideDuty + '.querySelector("textarea.desc").value');
+  await until('time at the front', async () => (await aideText()).startsWith('6:50 pm) *Biometric logged in.'));
+  assert.match(await aideText(), /\*Took vital signs \(4am\) of 33 admitted patients\..*\*Biometric logged out\.$/);
+  await ui('[...' + aideDuty + '.querySelectorAll("button")].find((b) => b.textContent === "Preview").click()');
+  await previewOpen(true);
+  assert.match(await text('#preview tfoot'), /12 hr 25 min/);
+  assert.equal(await text('#preview tbody .what span'), await aideText());
+  await shot('6h-preview-attendant.png');
+  await click('#preview-close');
+  await previewOpen(false);
+  await ui('[...' + aideDuty + '.querySelectorAll("button")].find((b) => b.textContent === "Activities").click()');
+  assert.deepEqual(await ui('return [0, 1, 2].map((i) => document.querySelector("#f-vt" + i).value)'), ['8pm', '12am', '4am']);
+  await click('#form-cancel');
+
   await chooseSection('lab', 'Lab');
   assert.equal(await ui('return document.querySelector("#import").disabled'), false);
 
   console.log('about');
   await click('#about');
   await until('logo', () => ui('const img = document.querySelector("#logo"); return !!img && img.complete && img.naturalWidth === 480'), 3000);
-  assert.match(await text('#sheet'), /ODWD Autopilot 1\.5\.0/);
+  assert.match(await text('#sheet'), /ODWD Autopilot 1\.6\.0/);
   assert.match(await text('#sheet'), /Made by sago/);
   await shot('6f-about.png');
   await click('#about-close');
@@ -271,6 +301,7 @@ async function main() {
   console.log('settings');
   await click('#open-settings');
   assert.equal(await ui('return document.querySelector("#s-layout-nurse").value'), 'whole');
+  assert.equal(await ui('return document.querySelector("#s-layout-attendant").value'), 'whole');
   await ui('document.querySelector("#s-endAfter").value = "20";');
   await shot('7-settings.png');
   await click('#settings-save');

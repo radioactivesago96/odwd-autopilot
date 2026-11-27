@@ -1,9 +1,9 @@
 # ODWD Autopilot
 
-Types laboratory and nursing duty entries into the Online Daily Work Diary
+Types laboratory, nurse and nurse attendant duty entries into the Online Daily Work Diary
 (http://www.misocc-hrmis.net/odwd/index.php) and saves them.
 
-The program is one file: `ODWD-Autopilot-1.5.0.exe`. Copy it anywhere, including a USB stick,
+The program is one file: `ODWD-Autopilot-1.6.0.exe`. Copy it anywhere, including a USB stick,
 and open it. Nothing is installed. It makes a folder named `ODWD-Autopilot-data` beside itself
 for your settings and duties.
 
@@ -11,8 +11,8 @@ for your settings and duties.
 Every launch plays a short animated start screen (click or press a key to skip it), then a
 reminder: the app types your diary, but it is not an excuse to get lazy. Enter only work you
 really did and read every entry before it is saved. Press **I understand**, then answer **What
-section are you?** (Laboratory or Nurse; last time's answer is ready). The diary site loads
-after that. Change your section later with the **Lab** / **Nurse** button at the top.
+section are you?** (Laboratory, Nurse or Nurse Attendant; last time's answer is ready). The diary site loads
+after that. Change your section later with the **Lab** / **Nurse** / **NA** button at the top.
 
 ## Preview
 - **F8** shows a preview first: every entry that will be saved, with date, times, time spent and
@@ -64,7 +64,7 @@ animation effects turned off, the app starts with FX off.
 New duties belong to your section. When you add one, choose how its **Entries** are made.
 
 - **Whole** is one entry from time in to time out. **Intervals** is several timed entries.
-  Laboratory starts as Intervals and Nurse as Whole; change either in **Settings**.
+  Laboratory starts as Intervals, Nurse and Nurse Attendant as Whole; change each in **Settings**.
 - To change a duty already in the list, open **Activities** and change **Entries**. The entries
   are written again, so text you typed in that duty is replaced.
 - A whole entry's default times are 30 minutes before the shift to 15 minutes after. Change them
@@ -76,6 +76,14 @@ complaints, health teaching, admissions, discharges, endorsement to the next shi
 Type the number of patients for each. **A blank number leaves its sentence out; a typed 0 is
 written as 0.** Put anything else under **Other tasks**; it is written as you type it. The wording,
 including "CDH LOBBY", is editable in **Settings**.
+
+**Nurse Attendant duties** are written in sentences starting with `*`, with the start time at the
+front: log-in, patients received, three vital-sign rounds, specimen bottles and specimens, lab
+requests and diet list, IVF and IV care, new admissions, patient requests, heplock, newborn
+bathing, vital signs encoded, endorsement and log-out. Type the time of each vital-sign round
+(for example 8pm) and the patient numbers; blank and 0 work as for Nurse. The endorsement to the
+incoming shift is always written. In Intervals, check that each vital-sign round falls near the
+time it names.
 
 ## Laboratory duties
 - **Import** reads the CDH Accomplishment Report PDF, its JSON backup, or a CSV with the columns
@@ -121,7 +129,7 @@ the logs, then send it. After that first confirmed save the app knows.
 Do not press Save, or open another page, while the app is typing. It will stop.
 
 ## Limits
-- Import is for laboratory duties and is off in the Nurse section; nurse duties are added with
+- Import is for laboratory duties and is off in the other sections; their duties are added with
   **+ Duty**.
 - It cannot edit or delete entries already on the site.
 - Nobody has tried a whole entry that runs past midnight on the real site. Check the first one,

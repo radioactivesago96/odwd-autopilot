@@ -23,7 +23,18 @@
     ['skinTest', 'Skin testing'], ['complaints', 'Complaints'], ['healthTeaching', 'Health teaching'],
     ['newAdmissions', 'New admissions'], ['discharges', 'For discharge'], ['censusOut', 'You endorsed']
   ];
-  const CATEGORY_NAMES = { lab: 'Laboratory', nurse: 'Nurse' };
+  // The nurse attendant's numbers, in the order of the entry. The vital-sign rounds are apart.
+  const ATTENDANT = [
+    ['censusIn', 'Endorsed to you'], ['aBottles', 'Specimen bottles'], ['aSpecimens', 'Specimens sent'],
+    ['aLabRequests', 'Lab requests encoded'], ['aDiet', 'Diet list updated'], ['aIvfAssist', 'IVF insertion assisted'],
+    ['aIvFollowed', 'IV fluid followed up'], ['aIvTerminated', 'Dislodged IV ended'], ['aNewAdmit', 'New admits received'],
+    ['aDietNew', 'Diet list, new admits'], ['aRequests', 'Patient requests'], ['aHeplock', 'Changed to heplock'],
+    ['aNewborn', 'Newborns bathed'], ['aVsEncoded', 'Vital signs encoded']
+  ];
+  const VITALS = [['aVs1', '8pm'], ['aVs2', '12am'], ['aVs3', '4am']]; // key, example time
+  const WARD_FIELDS = { nurse: NURSE, attendant: ATTENDANT.concat(VITALS.map(([key]) => [key])) };
+  const CATEGORY_NAMES = { lab: 'Laboratory', nurse: 'Nurse', attendant: 'Nurse Attendant' };
+  const SHORT_NAMES = { lab: 'Lab', nurse: 'Nurse', attendant: 'NA' }; // for the narrow top bar
   const LAYOUT_NAMES = [['intervals', 'Intervals (timed entries)'], ['whole', 'Whole (one entry)']];
   const WORDING_LABELS = {
     prep: 'Time in', received: 'Endorsement received ({name})', endorse: 'Endorsement to next shift ({name})', timeout: 'Time out',
@@ -32,7 +43,10 @@
     admissionChem: 'New admissions: chemistry ({tests})', admissionOther: 'New admissions: other tests ({name})',
     other: 'Other test ({name})', cleaning: 'Cleaning', qc: 'QC',
     ...Object.fromEntries(NURSE.map(([key, label]) => [key, 'Nurse: ' + label])),
-    nLogin: 'Nurse: log-in', nReceive: 'Nurse: endorsed to you', nEndorse: 'Nurse: you endorsed', nLogout: 'Nurse: log-out'
+    nLogin: 'Nurse: log-in', nReceive: 'Nurse: endorsed to you', nEndorse: 'Nurse: you endorsed', nLogout: 'Nurse: log-out',
+    ...Object.fromEntries(ATTENDANT.filter(([key]) => key !== 'censusIn').map(([key, label]) => [key, 'NA: ' + label])),
+    aVitals: 'NA: vital signs ({at} is the time)', aLogin: 'NA: log-in ({in} is the start time)', aReceive: 'NA: endorsed to you',
+    aEndorse: 'NA: endorsement', aLogout: 'NA: log-out'
   };
   const KIND = { whole: 'Whole duty', prep: 'Time in', received: 'Endorsement received', work: 'Duty work', endorse: 'Endorsement to next shift', timeout: 'Time out' };
   const MARK = { logged: 'ON SITE', possible: 'POSSIBLE DUPLICATE', unconfirmed: 'NOT CONFIRMED', new: 'NEW' };
@@ -81,8 +95,8 @@
     return select;
   };
   // "Nurse · 3 PM – 11 PM · Whole"
-  const dutyNote = (duty) => [duty.category === 'nurse' && CATEGORY_NAMES.nurse, shiftLabel(duty), duty.layout === 'whole' && 'Whole']
-    .filter(Boolean).join(' · ');
+  const dutyNote = (duty) => [WARD_FIELDS[duty.category] && CATEGORY_NAMES[duty.category], shiftLabel(duty),
+    duty.layout === 'whole' && 'Whole'].filter(Boolean).join(' · ');
 
   async function send(action) {
     localNotice = '';
@@ -347,12 +361,13 @@
     for (const el of document.querySelectorAll('.speed button')) {
       el.setAttribute('aria-checked', String(el.dataset.speed === state.settings.speed));
     }
-    const nurse = state.settings.category === 'nurse';
-    $('#section').textContent = nurse ? 'Nurse' : 'Lab';
+    const section = state.settings.category;
+    $('#section').textContent = SHORT_NAMES[section];
+    $('#section').title = 'Your section: ' + CATEGORY_NAMES[section] + '. Click to change it.';
     $('#section').disabled = running;
     // Reports that can be imported are laboratory reports.
-    $('#import').disabled = running || nurse;
-    $('#import').title = nurse ? 'Import is for laboratory reports' : '';
+    $('#import').disabled = running || section !== 'lab';
+    $('#import').title = section !== 'lab' ? 'Import is for laboratory reports' : '';
     const auto = $('#auto');
     const inAutopilot = running && !!state.run && state.run.mode === 'autopilot';
     auto.textContent = !inAutopilot ? 'F8 AUTOPILOT' : state.run.paused ? 'F8 RESUME' : 'F8 PAUSE';
@@ -422,7 +437,7 @@
     showPage('About', [
       h('div', { class: 'logo-card' }, h('img', { id: 'logo', src: 'img/sago-logo.png', alt: 'sago' })),
       h('p', { class: 'about-name', text: 'ODWD Autopilot ' + state.version }),
-      h('p', { text: 'Types Online Work Diary entries for the Laboratory and Nurse sections.' }),
+      h('p', { text: 'Types Online Work Diary entries for the Laboratory, Nurse and Nurse Attendant sections.' }),
       h('p', { text: 'Made by sago.' }),
       h('p', { class: 'problem future', text: 'It is a typing helper, not an excuse to get lazy. Enter only work you really did, and read every entry before it is saved.' }),
       h('p', { class: 'muted', text: 'Built with Electron and PDF.js.' })
@@ -459,7 +474,7 @@
     const iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
 
     const category = duty ? duty.category || 'lab' : state.settings.category;
-    const nurse = category === 'nurse';
+    const ward = WARD_FIELDS[category]; // undefined for the laboratory
     const layout = layoutSelect('f-layout', duty ? duty.layout || 'intervals' : state.settings.layouts[category]);
     const date = input('f-date', { type: 'date', value: duty ? duty.date : iso, disabled: !!duty });
     const shift = h('select', { id: 'f-shift', disabled: !!duty },
@@ -494,41 +509,51 @@
       h('label', { class: 'switch' }, qc, h('span', { text: 'QC done' })),
       h('h3', { text: 'Routine tasks (only the ones you did)' }), ...routine,
       field('Other tests (name: patients)', other));
+    const blanks = () => h('p', { class: 'muted', text: 'Blank leaves a sentence out. A 0 is written as 0.' });
     const nurseFields = h('div', { id: 'f-nurse' },
-      h('h3', { text: 'Patients' }),
-      h('p', { class: 'muted', text: 'Blank leaves a sentence out. A 0 is written as 0.' }),
-      h('div', { class: 'grid' }, ...numbers(NURSE)));
+      h('h3', { text: 'Patients' }), blanks(),
+      h('div', { class: 'grid' }, ...(category === 'nurse' ? numbers(NURSE) : [])));
+    const vitalRows = () => VITALS.map(([key, example], i) => h('div', { class: 'row vitals' },
+      field('Round ' + (i + 1) + ' time', input('f-vt' + i, { value: (a.vitalTimes || [])[i] || '', placeholder: example })),
+      field('Patients', input('f-' + key, { type: 'number', min: 0, step: 1, value: counts[key] ?? '' }))));
+    const attendantFields = h('div', { id: 'f-attendant' }, ...(category !== 'attendant' ? [] : [
+      h('h3', { text: 'Vital signs' }), ...vitalRows(),
+      h('h3', { text: 'Patients and items' }), blanks(),
+      h('div', { class: 'grid' }, ...numbers(ATTENDANT))
+    ]));
     const handover = h('div', { id: 'f-handover' },
       field('Endorsement received from', from), field('Endorsed to', to));
-    labFields.hidden = nurse;
-    handover.hidden = nurse;
-    nurseFields.hidden = !nurse;
+    labFields.hidden = !!ward;
+    handover.hidden = !!ward;
+    nurseFields.hidden = category !== 'nurse';
+    attendantFields.hidden = category !== 'attendant';
 
     showSheet((duty ? 'ACTIVITIES' : 'NEW DUTY') + ' · ' + CATEGORY_NAMES[category], [
       field('Entries', layout),
       field('Date', date), field('Shift', shift), custom,
-      labFields, nurseFields, field('Other tasks', extra), handover
+      labFields, nurseFields, attendantFields, field('Other tasks', extra), handover
     ], 'form-save', () => {
-      const activities = nurse ? { counts: {}, extraLines: lines(extra) } : {
+      const activities = ward ? { counts: {}, extraLines: lines(extra) } : {
         counts: {}, admissionTests: tests.value.trim(), qc: qc.checked, cleaning: cleaning.checked,
         otherTests: [], extraLines: lines(extra), from: from.value.trim(), to: to.value.trim(),
         routine: ROUTINES.map(([key]) => key).filter((key) => $('#f-r-' + key).checked)
       };
-      for (const [key] of nurse ? NURSE : ACTIVITIES) {
+      if (category === 'attendant') activities.vitalTimes = VITALS.map((v, i) => $('#f-vt' + i).value.trim());
+      for (const [key] of ward || ACTIVITIES) {
         const el = $('#f-' + key);
         if (el.value === '') continue;
         const n = Number(el.value);
         if (!Number.isInteger(n) || n < 0) return 'Counts must be whole numbers.';
-        if (n || nurse) activities.counts[key] = n;
+        if (n || ward) activities.counts[key] = n;
       }
-      for (const line of nurse ? [] : lines(other)) {
+      for (const line of ward ? [] : lines(other)) {
         const match = line.match(/^(.+?)\s*[:=]\s*(\d+)$/);
         if (!match) return 'Write other tests as "name: number", for example "Gram Stain: 2".';
         activities.otherTests.push({ name: match[1], count: Number(match[2]) });
       }
       const worked = Object.keys(activities.counts).length || activities.qc || activities.cleaning ||
         activities.extraLines.length || (activities.otherTests || []).length || (activities.routine || []).length;
-      if (!worked) return nurse ? 'Enter at least one number or task.' : 'Enter at least one activity.';
+      if (!worked) return ward ? 'Enter at least one number or task.' : 'Enter at least one activity.';
       if (duty) { send({ type: 'updateActivities', dutyId: duty.id, patch: activities, layout: layout.value }); return ''; }
       if (!date.value) return 'Choose the date.';
       const request = { date: date.value, shift: shift.value, category, layout: layout.value, ...activities };
@@ -561,12 +586,14 @@
       field('Typing speed', speed),
       field('Laboratory entries', layoutSelect('s-layout-lab', s.layouts.lab)),
       field('Nurse entries', layoutSelect('s-layout-nurse', s.layouts.nurse)),
+      field('Nurse Attendant entries', layoutSelect('s-layout-attendant', s.layouts.attendant)),
       h('h3', { text: 'Wording' }),
       h('p', { class: 'muted', text: 'One phrasing on each line; Rewrite takes the next one. {n} is the count; {s} or {S} adds the plural s or S.' }),
       ...wording,
       h('p', { class: 'muted', text: 'Data folder: ' + state.dataDir })
     ], 'settings-save', () => {
-      const patch = { speed: speed.value, wording: {}, layouts: { lab: $('#s-layout-lab').value, nurse: $('#s-layout-nurse').value } };
+      const layouts = Object.fromEntries(Object.keys(CATEGORY_NAMES).map((key) => [key, $('#s-layout-' + key).value]));
+      const patch = { speed: speed.value, wording: {}, layouts };
       for (const key of ['minutesEarly', 'receiveLead', 'endorseLead', 'endAfter']) patch[key] = Number($('#s-' + key).value);
       for (const key of Object.keys(s.wording)) patch.wording[key] = $('#s-t-' + key).value;
       send({ type: 'settings', patch });

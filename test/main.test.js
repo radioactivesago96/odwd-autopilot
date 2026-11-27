@@ -154,7 +154,7 @@ test('the section chosen is used for new duties, and each section keeps its own 
   const { controller, dir } = setup();
   let state = controller.state();
   assert.equal(state.settings.category, 'lab');
-  assert.deepEqual(state.settings.layouts, { lab: 'intervals', nurse: 'whole' });
+  assert.deepEqual(state.settings.layouts, { lab: 'intervals', nurse: 'whole', attendant: 'whole' });
   state = await controller.dispatch({ type: 'settings', patch: { category: 'nurse' } });
   assert.equal(createStore(dir).load().settings.category, 'nurse');
   state = await controller.dispatch({ type: 'addDuty', input: { date: '2026-11-01', shift: '3-11', counts: { censusIn: 3 } } });
@@ -163,7 +163,10 @@ test('the section chosen is used for new duties, and each section keeps its own 
   state = await controller.dispatch({ type: 'settings', patch: { category: 'pharmacy' } });
   assert.equal(state.settings.category, 'nurse');
   state = await controller.dispatch({ type: 'settings', patch: { layouts: { lab: 'whole', nurse: 'sideways' } } });
-  assert.deepEqual(state.settings.layouts, { lab: 'whole', nurse: 'whole' });
+  assert.deepEqual(state.settings.layouts, { lab: 'whole', nurse: 'whole', attendant: 'whole' });
+  state = await controller.dispatch({ type: 'settings', patch: { category: 'attendant' } });
+  assert.equal(state.settings.category, 'attendant');
+  state = await controller.dispatch({ type: 'settings', patch: { category: 'nurse' } });
   state = await controller.dispatch({ type: 'import', name: 'a.csv', text: csv.replace('2026-11-01', '2026-11-04') });
   const imported = state.duties.find((d) => d.date === '2026-11-04');
   assert.deepEqual([imported.category, imported.entries.length], ['lab', 1]);

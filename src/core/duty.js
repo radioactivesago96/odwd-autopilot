@@ -21,15 +21,31 @@ const ROUTINE_KEYS = ['supplies', 'reagents', 'analyzer', 'workarea', 'logbooks'
 const NURSE_KEYS = ['ivfRegulated', 'ivfFollowed', 'ivReinserted', 'ivRemoved', 'nebulized', 'labResults', 'oxygen',
   'medications', 'skinTest', 'complaints', 'healthTeaching', 'newAdmissions', 'discharges'];
 
-const CATEGORIES = ['lab', 'nurse'];
+// A nurse attendant's numbers, in the order of the entry. aVs1-3 are the vital-sign rounds.
+const ATTENDANT_KEYS = ['aVs1', 'aBottles', 'aSpecimens', 'aLabRequests', 'aDiet', 'aIvfAssist', 'aIvFollowed', 'aVs2',
+  'aIvTerminated', 'aNewAdmit', 'aDietNew', 'aRequests', 'aVs3', 'aHeplock', 'aNewborn', 'aVsEncoded'];
+const VITAL_ROUNDS = ['aVs1', 'aVs2', 'aVs3'];
+
+const CATEGORIES = ['lab', 'nurse', 'attendant'];
 const LAYOUTS = ['whole', 'intervals'];
-const DEFAULT_LAYOUTS = { lab: 'intervals', nurse: 'whole' };
+const DEFAULT_LAYOUTS = { lab: 'intervals', nurse: 'whole', attendant: 'whole' };
 const HANDOVERS = ['prep', 'received', 'endorse', 'timeout'];
-const NURSE_HANDOVERS = { prep: 'nLogin', received: 'nReceive', endorse: 'nEndorse', timeout: 'nLogout' };
-const NURSE_CENSUS = { received: 'censusIn', endorse: 'censusOut' };
+// The ward sections. census: the endorsement sentences that need a patient number.
+const WARD = {
+  nurse: {
+    keys: NURSE_KEYS, task: 'task',
+    handovers: { prep: 'nLogin', received: 'nReceive', endorse: 'nEndorse', timeout: 'nLogout' },
+    census: { received: 'censusIn', endorse: 'censusOut' }
+  },
+  attendant: {
+    keys: ATTENDANT_KEYS, task: 'atask',
+    handovers: { prep: 'aLogin', received: 'aReceive', endorse: 'aEndorse', timeout: 'aLogout' },
+    census: { received: 'censusIn' }
+  }
+};
 
 // Duties made before categories and layouts existed are laboratory duties in intervals.
-const categoryOf = (duty) => (duty.category === 'nurse' ? 'nurse' : 'lab');
+const categoryOf = (duty) => (CATEGORIES.includes(duty.category) ? duty.category : 'lab');
 const layoutOf = (duty) => (duty.layout === 'whole' ? 'whole' : 'intervals');
 
 // One phrasing on each line. Rewrite takes the next one.
@@ -84,7 +100,26 @@ const WORDING = {
   newAdmissions: 'CARRIED OUT {n} NEW ADMISSION{S}.',
   discharges: 'CARRIED OUT {n} PT{S} FOR DISCHARGE.',
   nEndorse: 'BED TO BED ENDORSEMENT TO {n} PATIENT{S} TO NEXT SHIFT NOD.',
-  nLogout: 'BIOMETRIC LOGGED OUT AT CDH LOBBY.'
+  nLogout: 'BIOMETRIC LOGGED OUT AT CDH LOBBY.',
+  // Nurse attendant wording, as the user's photo puts it. {in} is the entry's start time.
+  aLogin: '{in}) *Biometric logged in.',
+  aReceive: '*Received and reviewed {n} patient{s} from outgoing shift.',
+  aVitals: '*Took vital signs{at} of {n} admitted patient{s}.',
+  aBottles: '*Provided specimen bottle to {n} patient{s}.',
+  aSpecimens: '*Sent {n} specimen{s} to laboratory for examination.',
+  aLabRequests: '*Encoded {n} laboratory request{s} to IHOMIS.',
+  aDiet: '*Updated diet list of {n} admitted patient{s}.',
+  aIvfAssist: '*Assisted nurses for IVF insertion of {n} patient{s}.',
+  aIvFollowed: '*Followed up IV fluid to {n} patient{s}.',
+  aIvTerminated: '*Terminated dislodged IV of {n} patient{s}.',
+  aNewAdmit: '*Received and took vital signs of {n} newly admitted patient{s}.',
+  aDietNew: '*Updated diet list of {n} newly admitted patient{s}.',
+  aRequests: '*Responded to {n} patient request{s}.',
+  aHeplock: '*Changed {n} IVF line{s} to heplock.',
+  aNewborn: '*Bathed {n} newborn{s}.',
+  aVsEncoded: '*Encoded vital signs of {n} admitted patient{s} to IHOMIS.',
+  aEndorse: '*Endorsement to incoming shift.',
+  aLogout: '*Biometric logged out.'
 };
 
 // nightListing: where the site lists entries after midnight ('calendar' or 'duty'), once the app has seen it.
@@ -125,7 +160,7 @@ function sentence(text) {
 const SHORT_FORM = /(?:\b(?:Mr|Ms|Mrs|Ma|Dr|Engr|Sr|Jr|St|No|vs)|\b[A-Z])\.$/;
 function splitSentences(text) {
   const parts = [];
-  for (const piece of String(text || '').trim().split(/(?<=[.!?])\s+(?=[A-Z0-9("•])/)) {
+  for (const piece of String(text || '').trim().split(/(?<=[.!?])\s+(?=[A-Z0-9("•*])/)) {
     if (!piece) continue;
     if (parts.length && SHORT_FORM.test(parts[parts.length - 1])) parts[parts.length - 1] += ' ' + piece;
     else parts.push(piece);
@@ -144,7 +179,10 @@ const GROUPS = [
   ['immunoassay', 'crossmatch'], ['micro', 'serology'], ['other', 'extra'], ROUTINE_KEYS, ['ihomis', 'cleaning'],
   // Nurse duties (their own keys), then their typed tasks.
   ['ivfRegulated', 'ivfFollowed'], ['ivReinserted', 'ivRemoved'], ['nebulized', 'labResults'], ['oxygen', 'medications'],
-  ['skinTest', 'complaints'], ['healthTeaching'], ['newAdmissions', 'discharges'], ['task']
+  ['skinTest', 'complaints'], ['healthTeaching'], ['newAdmissions', 'discharges'], ['task'],
+  // Nurse attendant duties.
+  ['aVs1'], ['aBottles', 'aSpecimens'], ['aLabRequests', 'aDiet'], ['aIvfAssist', 'aIvFollowed'], ['aVs2'],
+  ['aIvTerminated', 'aNewAdmit'], ['aDietNew', 'aRequests'], ['aVs3'], ['aHeplock', 'aNewborn'], ['aVsEncoded'], ['atask']
 ];
 const ORDER = GROUPS.flat();
 const unsplit = (key) => key.split('#')[0];
@@ -185,20 +223,30 @@ function typedLines(activities, prefix) {
   return list;
 }
 
-function nurseLines(activities, wording) {
+// A vital-sign round is named by the time the user typed; without one, no time is written.
+function vitalValues(activities, round) {
+  const time = String((activities.vitalTimes || [])[round] || '').replace(/[()]/g, '').trim();
+  return { at: time ? ' (' + time + ')' : '' };
+}
+
+function wardLines(category, activities, wording) {
+  const { keys, task } = WARD[category];
   const counts = activities.counts || {};
   const list = [];
-  for (const key of NURSE_KEYS) {
+  for (const key of keys) {
     if (!typedCount(counts[key])) continue;
+    const round = VITAL_ROUNDS.indexOf(key);
+    const template = round < 0 ? key : 'aVitals';
+    const values = round < 0 ? {} : vitalValues(activities, round);
     partsOf(activities, key, Number(counts[key])).forEach((count, i) => {
-      list.push(worded({ key: i ? key + '#' + i : key, template: key, count, values: {} }, 0, wording));
+      list.push(worded({ key: i ? key + '#' + i : key, template, count, values }, 0, wording));
     });
   }
-  return inOrder(list.concat(typedLines(activities, 'task')));
+  return inOrder(list.concat(typedLines(activities, task)));
 }
 
 const workLines = (category, activities, wording) =>
-  (category === 'nurse' ? nurseLines(activities, wording) : activityLines(activities, wording));
+  (WARD[category] ? wardLines(category, activities, wording) : activityLines(activities, wording));
 
 // The work lines of one laboratory duty, in diary order. Only things the data or the user says were done.
 function activityLines(activities, wording) {
@@ -233,14 +281,14 @@ function activityLines(activities, wording) {
 
 const entry = (kind, start, end, list) => ({ id: newId(), kind, start, end, lines: list, text: null, variant: 0, allowPossible: false });
 
-// The time in, endorsement and time out sentences. A nurse's endorsement needs its patient
-// number: without it there is no sentence (null).
+// The time in, endorsement and time out sentences. A ward endorsement that states a patient
+// number needs it: without it there is no sentence (null).
 function handoverLine(category, kind, activities, wording, variant) {
-  if (category === 'nurse') {
-    const census = NURSE_CENSUS[kind];
+  if (WARD[category]) {
+    const census = WARD[category].census[kind];
     const typed = census && (activities.counts || {})[census];
     if (census && !typedCount(typed)) return null;
-    const line = { key: kind, template: NURSE_HANDOVERS[kind], values: {} };
+    const line = { key: kind, template: WARD[category].handovers[kind], values: {} };
     return worded(census ? { ...line, count: Number(typed) } : line, variant, wording);
   }
   const incoming = kind === 'received';
@@ -311,7 +359,7 @@ function makeEntries(duty, settings) {
   ].filter(Boolean);
 }
 
-const ACTIVITY_FIELDS = ['counts', 'admissionTests', 'qc', 'cleaning', 'routine', 'otherTests', 'extraLines', 'from', 'to', 'timeIn', 'timeOut'];
+const ACTIVITY_FIELDS = ['counts', 'vitalTimes', 'admissionTests', 'qc', 'cleaning', 'routine', 'otherTests', 'extraLines', 'from', 'to', 'timeIn', 'timeOut'];
 const FORMAT = 2;
 
 function createDuty(input, settings) {
@@ -335,7 +383,9 @@ function createDuty(input, settings) {
 
 function describe(item) {
   if (item.text !== null && item.text !== undefined) return item.text;
-  return item.lines.map((line) => line.text).filter(Boolean).join(' ');
+  // {in} is filled in here, so it follows the start time when the user changes it.
+  return item.lines.map((line) => line.text).filter(Boolean).join(' ')
+    .replace(/\{in\}/g, () => T.time12(item.start).toLowerCase());
 }
 
 function siteEntries(duty) {
@@ -580,7 +630,7 @@ function rewrite(duty, settings, entryId) {
 }
 
 module.exports = {
-  SHIFTS, ACTIVITY_KEYS, ROUTINE_KEYS, NURSE_KEYS, CATEGORIES, LAYOUTS, WORDING, defaultSettings, categoryOf, layoutOf,
+  SHIFTS, ACTIVITY_KEYS, ROUTINE_KEYS, NURSE_KEYS, ATTENDANT_KEYS, CATEGORIES, LAYOUTS, WORDING, defaultSettings, categoryOf, layoutOf,
   createDuty, describe, siteEntries, validate, splitSentences, setTimes, setText, splitWork, moveLine, splitCount,
   removeEmptyWork, updateActivities, resetTimes, setLayout, rewrite, canRewrite
 };
