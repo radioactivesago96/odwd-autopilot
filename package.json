@@ -1,0 +1,50 @@
+{
+  "name": "odwd-autopilot",
+  "version": "1.5.0",
+  "description": "Types laboratory duty entries into the Online Daily Work Diary",
+  "author": "sago",
+  "private": true,
+  "main": "src/main/main.js",
+  "scripts": {
+    "test": "node --test --test-timeout=30000 \"test/*.test.js\"",
+    "start": "electron .",
+    "e2e:site": "electron test/site.e2e.cjs",
+    "e2e:app": "electron test/app.e2e.cjs",
+    "build": "electron-builder --win"
+  },
+  "dependencies": {
+    "pdfjs-dist": "3.11.174"
+  },
+  "devDependencies": {
+    "electron": "22.3.27",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "ph.sago.odwdautopilot",
+    "productName": "ODWD Autopilot",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "npmRebuild": false,
+    "files": [
+      "src/**",
+      "package.json",
+      "!node_modules/canvas/**"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "ia32"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "ODWD-Autopilot-${version}.exe"
+    }
+  }
+}

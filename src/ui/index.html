@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; worker-src 'self' blob:; img-src 'self' data:">
+  <title>ODWD Autopilot</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <canvas id="banner" width="338" height="76" role="img" aria-label="ODWD Autopilot"></canvas>
+      <div class="marquee" aria-hidden="true">
+        <span id="marquee">*** ODWD AUTOPILOT *** F6 FILL NEXT *** F8 AUTOPILOT / PAUSE *** ESC STOP *** CHECK THE TIMES BEFORE YOU SAVE ***</span>
+      </div>
+      <div class="bar">
+        <div id="site" class="status">Waiting for the site</div>
+        <button id="section" title="Your section. Click to change it.">Lab</button>
+        <button id="fx" title="Moving effects on or off">FX</button>
+        <button id="home" title="Load the diary site again">Reload</button>
+      </div>
+    </header>
+    <div class="tools">
+      <button id="import">Import</button>
+      <button id="add">+ Duty</button>
+      <button id="open-settings">Settings</button>
+      <button id="about">About</button>
+      <input type="file" id="file" accept=".pdf,.csv,.json" hidden>
+    </div>
+    <div id="notice" role="status"></div>
+    <main id="scroll">
+      <div class="select-row">
+        <span id="duty-count"></span>
+        <button id="select-all" class="link">All</button>
+        <button id="select-none" class="link">None</button>
+      </div>
+      <ul id="duties"></ul>
+      <details id="skipped" hidden><summary></summary><ul></ul></details>
+    </main>
+    <footer>
+      <div class="speed" role="radiogroup" aria-label="Typing speed">
+        <span>Speed</span>
+        <button data-speed="instant" role="radio">Instant</button>
+        <button data-speed="fast" role="radio">Fast</button>
+        <button data-speed="slow" role="radio">Slow</button>
+        <button data-speed="human" role="radio">Human</button>
+      </div>
+      <div class="actions">
+        <button id="check" class="wide">Check site</button>
+        <button id="fill" class="big">F6 FILL NEXT</button>
+        <button id="auto" class="big primary">F8 AUTOPILOT</button>
+        <button id="stop" class="big danger">ESC STOP</button>
+      </div>
+      <div id="progress" role="status"></div>
+    </footer>
+  </div>
+  <section id="intro">
+    <canvas id="splash" role="img" aria-label="ODWD Autopilot is starting"></canvas>
+    <p id="splash-hint">Click or press any key to skip</p>
+    <div id="disclaimer" class="screen" role="dialog" aria-modal="true" aria-labelledby="disclaimer-title" hidden>
+      <div class="box">
+        <h2 id="disclaimer-title">Before you start</h2>
+        <p class="lead">This app types your Online Work Diary for you. It is not an excuse to get lazy.</p>
+        <ul>
+          <li>Keep working on your diary yourself, soon after each duty.</li>
+          <li>Enter only work you really did, with your real times and patient numbers.</li>
+          <li>Read every entry before it is saved. What it says is your responsibility.</li>
+        </ul>
+        <div class="row"><button id="agree" class="primary" disabled>I understand</button></div>
+      </div>
+    </div>
+    <div id="chooser" class="screen" role="dialog" aria-modal="true" aria-labelledby="chooser-title" hidden>
+      <div class="box">
+        <h2 id="chooser-title">What section are you?</h2>
+        <div class="sections">
+          <button data-section="lab" disabled>Laboratory</button>
+          <button data-section="nurse" disabled>Nurse</button>
+        </div>
+        <p class="muted">You can change it later with the section button at the top.</p>
+      </div>
+    </div>
+  </section>
+  <section id="sheet" hidden></section>
+  <section id="preview" role="dialog" aria-modal="true" aria-labelledby="preview-title" hidden>
+    <h2 id="preview-title">Preview</h2>
+    <p id="preview-note"></p>
+    <div id="preview-body"></div>
+    <div class="row">
+      <button id="preview-close">Close</button>
+      <button id="preview-start" class="primary">Start</button>
+    </div>
+  </section>
+  <script src="../../node_modules/pdfjs-dist/build/pdf.min.js"></script>
+  <script src="pdf-pages.js"></script>
+  <script src="keygen.js"></script>
+  <script src="panel.js"></script>
+  <script src="intro.js"></script>
+</body>
+</html>
